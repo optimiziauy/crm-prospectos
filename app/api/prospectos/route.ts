@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
       [
-        negocio, contacto, telefono || null, email || null,
+        negocio, contacto || '', telefono || null, email || null,
         canal_contacto || 'otro',
         fecha_primer_contacto || null, notas_primer_contacto || null,
         estado || 'identificado', asignado_a || 'nicolas',

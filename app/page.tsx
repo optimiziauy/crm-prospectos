@@ -136,8 +136,8 @@ function Modal({
                 placeholder="Supermercado El Sol" className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contacto *</label>
-              <input required value={form.contacto} onChange={e => set('contacto', e.target.value)}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
+              <input value={form.contacto} onChange={e => set('contacto', e.target.value)}
                 placeholder="María García" className="input" />
             </div>
           </div>
