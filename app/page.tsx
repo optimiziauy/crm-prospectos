@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type Estado = 'identificado' | 'contactado' | 'reunion_agendada' | 'demo_hecha' | 'cerrado' | 'descartado';
+type Estado = 'identificado' | 'contactado' | 'reunion_agendada' | 'reunion_realizada' | 'demo_hecha' | 'cerrado' | 'descartado';
 type Canal  = 'whatsapp' | 'email' | 'llamada' | 'en_persona' | 'linkedin' | 'referido' | 'otro';
 type Asignado = 'nicolas' | 'joaquin';
 
@@ -32,12 +32,13 @@ interface Prospecto {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const ESTADOS: { value: Estado; label: string; color: string; bg: string }[] = [
-  { value: 'identificado',    label: 'Identificado',      color: 'text-gray-600',  bg: 'bg-gray-100' },
-  { value: 'contactado',      label: 'Contactado',        color: 'text-blue-600',  bg: 'bg-blue-50' },
-  { value: 'reunion_agendada',label: 'Reunión agendada',  color: 'text-violet-600',bg: 'bg-violet-50' },
-  { value: 'demo_hecha',      label: 'Demo hecha',        color: 'text-amber-600', bg: 'bg-amber-50' },
-  { value: 'cerrado',         label: 'Cerrado ✓',         color: 'text-emerald-600',bg: 'bg-emerald-50' },
-  { value: 'descartado',      label: 'Descartado',        color: 'text-red-500',   bg: 'bg-red-50' },
+  { value: 'identificado',      label: 'Identificado',       color: 'text-gray-600',   bg: 'bg-gray-100' },
+  { value: 'contactado',        label: 'Contactado',         color: 'text-blue-600',   bg: 'bg-blue-50' },
+  { value: 'reunion_agendada',  label: 'Reunión agendada',   color: 'text-violet-600', bg: 'bg-violet-50' },
+  { value: 'reunion_realizada', label: 'Reunión realizada',  color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { value: 'demo_hecha',        label: 'Demo hecha',         color: 'text-amber-600',  bg: 'bg-amber-50' },
+  { value: 'cerrado',           label: 'Cerrado ✓',          color: 'text-emerald-600',bg: 'bg-emerald-50' },
+  { value: 'descartado',        label: 'Descartado',         color: 'text-red-500',    bg: 'bg-red-50' },
 ];
 
 const CANALES: { value: Canal; label: string; icon: React.ReactNode }[] = [
@@ -83,14 +84,21 @@ function canalLabel(canal: Canal) {
   ) : canal;
 }
 
+function parseLocalDate(d: string) {
+  const [y, m, day] = d.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, day);
+}
+
 function fmtDate(d: string | null) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  const date = parseLocalDate(d);
+  return date.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function isVencido(d: string | null) {
   if (!d) return false;
-  return new Date(d) < new Date(new Date().toDateString());
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return parseLocalDate(d) < today;
 }
 
 // ─── Modal Form ──────────────────────────────────────────────────────────────

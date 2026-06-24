@@ -8,13 +8,14 @@ export async function GET() {
     const rows = await query(
       `SELECT * FROM prospectos ORDER BY
         CASE estado
-          WHEN 'reunion_agendada' THEN 1
-          WHEN 'contactado'       THEN 2
-          WHEN 'identificado'     THEN 3
-          WHEN 'demo_hecha'       THEN 4
-          WHEN 'cerrado'          THEN 5
-          WHEN 'descartado'       THEN 6
-          ELSE 7
+          WHEN 'reunion_agendada'  THEN 1
+          WHEN 'reunion_realizada' THEN 2
+          WHEN 'contactado'        THEN 3
+          WHEN 'identificado'      THEN 4
+          WHEN 'demo_hecha'        THEN 5
+          WHEN 'cerrado'           THEN 6
+          WHEN 'descartado'        THEN 7
+          ELSE 8
         END,
         proximo_seguimiento ASC NULLS LAST,
         creado_en DESC`
