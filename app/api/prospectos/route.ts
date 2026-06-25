@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       estado, asignado_a, notas, proximo_seguimiento,
     } = body;
 
-    const row = await queryOne(
+    const row = await queryOne<{ id: number }>(
       `INSERT INTO prospectos
          (negocio, contacto, telefono, email, canal_contacto,
           fecha_primer_contacto, notas_primer_contacto,
@@ -51,6 +51,15 @@ export async function POST(req: NextRequest) {
         notas || null, proximo_seguimiento || null,
       ]
     );
+
+    if (row?.id && (notas_primer_contacto || fecha_primer_contacto)) {
+      await queryOne(
+        `INSERT INTO interacciones (prospecto_id, numero, canal, fecha, notas)
+         VALUES ($1, 1, $2, $3, $4)`,
+        [row.id, canal_contacto || 'otro', fecha_primer_contacto || null, notas_primer_contacto || null]
+      );
+    }
+
     return NextResponse.json({ data: row }, { status: 201 });
   } catch (err) {
     console.error('[prospectos POST]', err);

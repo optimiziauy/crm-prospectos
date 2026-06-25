@@ -14,6 +14,16 @@ type Estado = 'identificado' | 'contactado' | 'reunion_agendada' | 'reunion_real
 type Canal  = 'whatsapp' | 'email' | 'llamada' | 'en_persona' | 'linkedin' | 'referido' | 'otro';
 type Asignado = 'nicolas' | 'joaquin';
 
+interface Interaccion {
+  id: number;
+  prospecto_id: number;
+  numero: number;
+  canal: Canal;
+  fecha: string | null;
+  notas: string | null;
+  creado_en: string;
+}
+
 interface Prospecto {
   id: number;
   negocio: string;
@@ -99,6 +109,128 @@ function isVencido(d: string | null) {
   if (!d) return false;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return parseLocalDate(d) < today;
+}
+
+// ─── Interacciones Panel ─────────────────────────────────────────────────────
+function InteraccionesPanel({ prospectoId }: { prospectoId: number }) {
+  const [interacciones, setInteracciones] = useState<Interaccion[]>([]);
+  const [activeIdx, setActiveIdx]         = useState(0);
+  const [loading, setLoading]             = useState(true);
+  const [addingNew, setAddingNew]         = useState(false);
+  const [newForm, setNewForm]             = useState({ canal: 'whatsapp' as Canal, fecha: '', notas: '' });
+  const [saving, setSaving]               = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/prospectos/${prospectoId}/interacciones`)
+      .then(r => r.json())
+      .then(({ data }) => { setInteracciones(data ?? []); setActiveIdx(0); })
+      .finally(() => setLoading(false));
+  }, [prospectoId]);
+
+  async function guardarNuevo() {
+    setSaving(true);
+    const res = await fetch(`/api/prospectos/${prospectoId}/interacciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newForm),
+    });
+    const { data } = await res.json();
+    const updated = [...interacciones, data];
+    setInteracciones(updated);
+    setActiveIdx(updated.length - 1);
+    setAddingNew(false);
+    setNewForm({ canal: 'whatsapp', fecha: '', notas: '' });
+    setSaving(false);
+  }
+
+  function ordinal(n: number) {
+    if (n === 1) return '1er';
+    if (n === 2) return '2do';
+    if (n === 3) return '3er';
+    return `${n}to`;
+  }
+
+  if (loading) return <p className="text-xs text-gray-400">Cargando...</p>;
+
+  const active = !addingNew ? interacciones[activeIdx] : null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 flex-wrap mb-3">
+        {interacciones.map((i, idx) => (
+          <button key={i.id}
+            onClick={() => { setActiveIdx(idx); setAddingNew(false); }}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              !addingNew && activeIdx === idx
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+            }`}>
+            {ordinal(i.numero)} contacto
+          </button>
+        ))}
+        <button
+          onClick={() => setAddingNew(true)}
+          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            addingNew
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
+          }`}>
+          + Nuevo contacto
+        </button>
+      </div>
+
+      {addingNew ? (
+        <div className="space-y-2 bg-white rounded-xl p-3 border border-blue-100">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Canal</label>
+              <select value={newForm.canal}
+                onChange={e => setNewForm(f => ({ ...f, canal: e.target.value as Canal }))}
+                className="input text-xs py-1.5">
+                {CANALES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Fecha</label>
+              <input type="date" value={newForm.fecha}
+                onChange={e => setNewForm(f => ({ ...f, fecha: e.target.value }))}
+                className="input text-xs py-1.5" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">¿Cómo fue?</label>
+            <textarea value={newForm.notas}
+              onChange={e => setNewForm(f => ({ ...f, notas: e.target.value }))}
+              placeholder="Qué se habló, cómo respondió..."
+              rows={3} className="input text-xs resize-none" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={guardarNuevo} disabled={saving} className="btn-primary text-xs py-1.5 px-4">
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button onClick={() => setAddingNew(false)} className="btn-secondary text-xs py-1.5 px-4">Cancelar</button>
+          </div>
+        </div>
+      ) : active ? (
+        <div className="bg-white rounded-xl p-3 border border-gray-100 space-y-2">
+          <div className="flex items-center gap-4">
+            {canalLabel(active.canal)}
+            {active.fecha && (
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                <Calendar className="h-3 w-3" />{fmtDate(active.fecha)}
+              </span>
+            )}
+          </div>
+          {active.notas
+            ? <p className="text-sm text-gray-700 leading-relaxed">{active.notas}</p>
+            : <p className="text-xs text-gray-400 italic">Sin notas registradas</p>
+          }
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 italic">No hay contactos registrados aún.</p>
+      )}
+    </div>
+  );
 }
 
 // ─── Modal Form ──────────────────────────────────────────────────────────────
@@ -452,23 +584,22 @@ export default function CRMPage() {
                     {expandido === p.id && (
                       <tr key={`${p.id}-exp`} className="bg-blue-50/30">
                         <td colSpan={6} className="px-4 pb-4 pt-2">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                            {p.notas_primer_contacto && (
-                              <div>
-                                <p className="text-xs font-semibold text-blue-700 mb-1">Cómo fue el primer contacto</p>
-                                <p className="text-gray-700 leading-relaxed">{p.notas_primer_contacto}</p>
-                              </div>
-                            )}
-                            {p.notas && (
-                              <div>
-                                <p className="text-xs font-semibold text-gray-500 mb-1">Notas generales</p>
-                                <p className="text-gray-700 leading-relaxed">{p.notas}</p>
-                              </div>
-                            )}
-                            {p.email && (
-                              <div>
-                                <p className="text-xs font-semibold text-gray-500 mb-1">Email</p>
-                                <a href={`mailto:${p.email}`} className="text-blue-600 hover:underline">{p.email}</a>
+                          <div className="space-y-3">
+                            <InteraccionesPanel prospectoId={p.id} />
+                            {(p.notas || p.email) && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                                {p.notas && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 mb-1">Notas generales</p>
+                                    <p className="text-sm text-gray-700 leading-relaxed">{p.notas}</p>
+                                  </div>
+                                )}
+                                {p.email && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 mb-1">Email</p>
+                                    <a href={`mailto:${p.email}`} className="text-sm text-blue-600 hover:underline">{p.email}</a>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
