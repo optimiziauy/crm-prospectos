@@ -37,6 +37,7 @@ interface Prospecto {
   asignado_a: Asignado;
   notas: string | null;
   proximo_seguimiento: string | null;
+  fecha_reunion: string | null;
   creado_en: string;
 }
 
@@ -73,6 +74,7 @@ const FORM_EMPTY = {
   estado: 'identificado' as Estado,
   asignado_a: 'nicolas' as Asignado,
   notas: '', proximo_seguimiento: '',
+  fecha_reunion: '',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -109,6 +111,23 @@ function isVencido(d: string | null) {
   if (!d) return false;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   return parseLocalDate(d) < today;
+}
+
+function googleCalendarUrl(negocio: string, contacto: string, fechaReunion: string) {
+  const start = new Date(fechaReunion);
+  const end   = new Date(start.getTime() + 60 * 60 * 1000); // +1 hora
+  const fmt   = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace('.000', '');
+  const title = encodeURIComponent(`Reunión con ${negocio}${contacto ? ` (${contacto})` : ''}`);
+  const dates = `${fmt(start)}/${fmt(end)}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}`;
+}
+
+function fmtDatetime(d: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('es-UY', {
+    day: '2-digit', month: '2-digit', year: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  });
 }
 
 // ─── Interacciones Panel ─────────────────────────────────────────────────────
@@ -339,6 +358,35 @@ function Modal({
             </div>
           </div>
 
+          {/* Fecha y hora de reunión — solo cuando estado es reunion_agendada */}
+          {form.estado === 'reunion_agendada' && (
+            <div className="border border-violet-100 bg-violet-50/50 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-violet-700 flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> Reunión agendada
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora de la reunión</label>
+                <input
+                  type="datetime-local"
+                  value={form.fecha_reunion}
+                  onChange={e => set('fecha_reunion', e.target.value)}
+                  className="input"
+                />
+              </div>
+              {form.fecha_reunion && (
+                <a
+                  href={googleCalendarUrl(form.negocio, form.contacto, form.fecha_reunion)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-violet-700 font-medium hover:text-violet-900 underline underline-offset-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Agregar a Google Calendar
+                </a>
+              )}
+            </div>
+          )}
+
           {/* Notas generales */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notas generales</label>
@@ -444,6 +492,9 @@ export default function CRMPage() {
     estado: editing.estado, asignado_a: editing.asignado_a,
     notas: editing.notas ?? '',
     proximo_seguimiento: editing.proximo_seguimiento?.slice(0,10) ?? '',
+    fecha_reunion: editing.fecha_reunion
+      ? new Date(editing.fecha_reunion).toISOString().slice(0, 16)
+      : '',
   } : undefined;
 
   return (
@@ -586,8 +637,24 @@ export default function CRMPage() {
                         <td colSpan={6} className="px-4 pb-4 pt-2">
                           <div className="space-y-3">
                             <InteraccionesPanel prospectoId={p.id} />
-                            {(p.notas || p.email) && (
+                            {(p.notas || p.email || p.fecha_reunion) && (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                                {p.fecha_reunion && (
+                                  <div className="sm:col-span-2 flex items-center gap-3 bg-violet-50 rounded-lg px-3 py-2">
+                                    <Calendar className="h-4 w-4 text-violet-500 shrink-0" />
+                                    <div>
+                                      <p className="text-xs font-semibold text-violet-700">Reunión agendada</p>
+                                      <p className="text-sm text-violet-900 font-medium">{fmtDatetime(p.fecha_reunion)}</p>
+                                    </div>
+                                    <a
+                                      href={googleCalendarUrl(p.negocio, p.contacto, p.fecha_reunion)}
+                                      target="_blank" rel="noreferrer"
+                                      className="ml-auto text-xs text-violet-600 hover:text-violet-900 underline underline-offset-2 shrink-0"
+                                    >
+                                      Ver en Google Calendar
+                                    </a>
+                                  </div>
+                                )}
                                 {p.notas && (
                                   <div>
                                     <p className="text-xs font-semibold text-gray-500 mb-1">Notas generales</p>
